@@ -1,5 +1,6 @@
 
 package com.secureaccess.exam_access_control.controller;
+import com.secureaccess.exam_access_control.dto.CourseResponse;
 import com.secureaccess.exam_access_control.dto.ResultResponse;
 import com.secureaccess.exam_access_control.entity.Result;
 import com.secureaccess.exam_access_control.entity.Student;
@@ -15,25 +16,66 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
-
+import com.secureaccess.exam_access_control.dto.CourseResponse;
+import org.springframework.web.bind.annotation.PathVariable;
 import java.util.Map;
 import java.util.List;
-
+import com.secureaccess.exam_access_control.entity.Course;
+import com.secureaccess.exam_access_control.entity.Faculty;
+import com.secureaccess.exam_access_control.dto.MarkResponse;
+import com.secureaccess.exam_access_control.entity.Marks;
+import com.secureaccess.exam_access_control.repository.MarksRepository;
+import com.secureaccess.exam_access_control.dto.CourseResponse;
+import com.secureaccess.exam_access_control.entity.Course;
+import com.secureaccess.exam_access_control.entity.Faculty;
+import com.secureaccess.exam_access_control.repository.CourseRepository;
+import com.secureaccess.exam_access_control.repository.FacultyRepository;
 @RestController
 public class AuthTestController {
-
+    private final FacultyRepository facultyRepository;
+    private final CourseRepository courseRepository;
     private final UserRepository userRepository;
     private final StudentRepository studentRepository;
     private final ResultRepository resultRepository;
-
+    private final MarksRepository marksRepository;
     public AuthTestController(
             UserRepository userRepository,
             StudentRepository studentRepository,
-            ResultRepository resultRepository) {
+            ResultRepository resultRepository,
+            FacultyRepository facultyRepository,
+            CourseRepository courseRepository,
+            MarksRepository marksRepository) {
         this.userRepository = userRepository;
         this.studentRepository = studentRepository;
         this.resultRepository = resultRepository;
+        this.facultyRepository = facultyRepository;
+        this.courseRepository = courseRepository;
+        this.marksRepository = marksRepository;
     }
+    
+@GetMapping("/api/faculty/{id}/courses")
+@PreAuthorize("hasAuthority('VIEW_COURSE_MARKS')")
+public List<CourseResponse> getFacultyCourses(
+        @PathVariable Long id,
+        Authentication authentication) {
+
+    User user = userRepository.findByUsername(authentication.getName())
+            .orElseThrow(() ->
+                    new ResponseStatusException(HttpStatus.NOT_FOUND));
+
+    Faculty faculty = facultyRepository.findByUserId(user.getUserId())
+            .orElseThrow(() ->
+                    new ResponseStatusException(HttpStatus.NOT_FOUND));
+
+    if (!faculty.getFacultyId().equals(id)) {
+        throw new ResponseStatusException(HttpStatus.FORBIDDEN);
+    }
+
+    return courseRepository.findAssignedCourses(id)
+            .stream()
+            .map(CourseResponse::from)
+            .toList();
+}
 
     @GetMapping({"/api/auth/me", "/api/test/me"})
     public Map<String, Object> currentUser(Authentication authentication) {
@@ -124,4 +166,58 @@ public StudentProfileResponse getStudentProfile(
 
     return StudentProfileResponse.from(student);
 }
+@GetMapping("/api/students/{id}/courses")
+@PreAuthorize("hasAuthority('VIEW_OWN_COURSES')")
+public List<CourseResponse> getStudentCourses(
+        @PathVariable Long id,
+        Authentication authentication) {
+
+    User user = userRepository.findByUsername(authentication.getName())
+            .orElseThrow(() ->
+                    new ResponseStatusException(HttpStatus.NOT_FOUND));
+
+    Student student = studentRepository.findByUserId(user.getUserId())
+            .orElseThrow(() ->
+                    new ResponseStatusException(HttpStatus.NOT_FOUND));
+
+    if (!student.getStudentId().equals(id)) {
+        throw new ResponseStatusException(HttpStatus.FORBIDDEN);
+    }
+
+    return resultRepository.findCoursesByStudentId(id)
+            .stream()
+            .map(CourseResponse::from)
+            .toList();
+}
+
+@GetMapping("/api/courses/{id}/marks")
+@PreAuthorize("hasAuthority('VIEW_COURSE_MARKS')")
+public List<MarkResponse> getCourseMarks(
+        @PathVariable Long id,
+        Authentication authentication) {
+
+    User user = userRepository.findByUsername(authentication.getName())
+            .orElseThrow(() ->
+                    new ResponseStatusException(HttpStatus.NOT_FOUND));
+
+    Faculty faculty = facultyRepository.findByUserId(user.getUserId())
+            .orElseThrow(() ->
+                    new ResponseStatusException(HttpStatus.FORBIDDEN));
+
+    List<Course> assignedCourses =
+            courseRepository.findAssignedCourses(faculty.getFacultyId());
+
+    boolean assigned = assignedCourses.stream()
+            .anyMatch(course -> course.getCourseId().equals(id));
+
+    if (!assigned) {
+        throw new ResponseStatusException(HttpStatus.FORBIDDEN);
+    }
+
+    return marksRepository.findByCourseId(id)
+            .stream()
+            .map(MarkResponse::from)
+            .toList();
+}
+
 }
