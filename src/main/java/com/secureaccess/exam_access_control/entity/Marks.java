@@ -10,6 +10,12 @@ import java.time.Instant;
 public class Marks {
 
     @Id
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "marks_seq")
+    @SequenceGenerator(
+        name = "marks_seq",
+        sequenceName = "marks_mark_id_seq",
+        allocationSize = 1
+    )
     @Column(name = "mark_id")
     private Long markId;
 

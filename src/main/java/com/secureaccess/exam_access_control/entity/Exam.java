@@ -10,8 +10,14 @@ import java.time.Instant;
 public class Exam {
 
     @Id
-    @Column(name = "exam_id")
-    private Long examId;
+@GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "exam_seq")
+@SequenceGenerator(
+    name = "exam_seq",
+    sequenceName = "exams_exam_id_seq",
+    allocationSize = 1
+)
+@Column(name = "exam_id")
+private Long examId;
 
     @Column(name = "course_id", nullable = false)
     private Long courseId;
@@ -52,7 +58,33 @@ public class Exam {
     public String getExamType() {
         return examType;
     }
+    public void setCourseId(Long courseId) {
+    this.courseId = courseId;
+}
 
+public void setExamName(String examName) {
+    this.examName = examName;
+}
+
+public void setExamType(String examType) {
+    this.examType = examType;
+}
+
+public void setMaxMarks(BigDecimal maxMarks) {
+    this.maxMarks = maxMarks;
+}
+
+public void setStartTime(Instant startTime) {
+    this.startTime = startTime;
+}
+
+public void setEndTime(Instant endTime) {
+    this.endTime = endTime;
+}
+
+public void setStatus(String status) {
+    this.status = status;
+}
     public BigDecimal getMaxMarks() {
         return maxMarks;
     }

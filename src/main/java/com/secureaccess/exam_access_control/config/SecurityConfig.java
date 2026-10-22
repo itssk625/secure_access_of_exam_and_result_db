@@ -21,7 +21,10 @@ public class SecurityConfig {
             .sessionManagement(session -> session
                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/auth/**").permitAll()
+                // This application currently uses HTTP Basic; no public auth
+                // endpoints are implemented. Do not permit the whole /api/auth/**
+                // namespace by default, since a future endpoint could become public
+                // accidentally.
                 .anyRequest().authenticated())
             .httpBasic(Customizer.withDefaults());
 
